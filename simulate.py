@@ -86,12 +86,38 @@ async def wait_for_prompt(session):
         await asyncio.sleep(0.1)
 
 
+in_less = False
+
 async def simulated_typing(session, text, delay=0.1):
-    for char in text:
-        await session.async_send_text(char)
-        await asyncio.sleep(delay)
-    await session.async_send_text("\n")  # To execute the command after typing
-    await wait_for_prompt(session)
+    global in_less
+
+    if "less" in text.strip():
+        in_less = True
+
+    if in_less:
+        for char in text:
+            await session.async_send_text(char)
+            await asyncio.sleep(delay)
+        await session.async_send_text("\n")
+        await asyncio.sleep(0.1)  # A short sleep just to simulate the immediate execution in less
+    else:
+        for char in text:
+            await session.async_send_text(char)
+            await asyncio.sleep(delay)
+        await session.async_send_text("\n")
+        await wait_for_prompt(session)
+
+    # Check if it's a command to exit from less (typically "q")
+    if text.strip() == "q":
+        in_less = False
+
+
+# async def simulated_typing(session, text, delay=0.1):
+#     for char in text:
+#         await session.async_send_text(char)
+#         await asyncio.sleep(delay)
+#     await session.async_send_text("\n")  # To execute the command after typing
+#     await wait_for_prompt(session)
 
 # async def find_or_create_session(app, window_index=None, tab_index=None):
 #     windows = app.windows
