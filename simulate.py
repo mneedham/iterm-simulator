@@ -1,6 +1,8 @@
 import iterm2
 import asyncio
 import re
+import os
+import pyparsing as pp
 from markdown_it import MarkdownIt
 
 keyboard_shortcuts = {
@@ -29,20 +31,33 @@ keyboard_shortcuts = {
     "Ctrl+W": '\x17',  # Kill (cut) the word before the cursor
     "Ctrl+X": '\x18',  # Used as a prefix for other shortcuts
     "Ctrl+Y": '\x19',  # Yank (paste) the most recently killed text
-    "Ctrl+Z": '\x1a'   # Suspend the current process (send SIGTSTP)
-}
+    "Ctrl+Z": '\x1a',   # Suspend the current process (send SIGTSTP)
 
-# Example usage:
-ctrl_l_sequence = keyboard_shortcuts["Ctrl+L"]
+    "ArrowUp": '\x1b[A',
+    "ArrowDown": '\x1bB',  # Updated based on the output from tput
+    "ArrowRight": '\x1b[C',
+    "ArrowLeft": '\x1b[D'
+}
 
 valid_prompts = [
     "$",
     ">>>",
-    ">>> Send a message (/? for help)"
+    ">>> Send a message (/? for help)",
+
 ]
 
-PROMPT_PATTERN = "$"  # Adjust this to match your shell's prompt
-PYTHON_PROMPT_PATTERN = ">>>"
+def activate_iterm():
+    script = """
+        tell application "iTerm"
+            activate
+        end tell
+    """
+    os.system(f"osascript -e '{script}'")
+
+# Then call this function at the appropriate place in your script
+activate_iterm()
+
+
 
 async def wait_for_prompt(session):
     await asyncio.sleep(0.5)  # short delay
@@ -63,9 +78,10 @@ async def wait_for_prompt(session):
             if last_line:
                 break
 
-        print(f"Detected last line: [{last_line.strip()}]", last_line.strip() == PROMPT_PATTERN)
+        print(f"Detected last line: [{last_line.strip()}]")
 
         if last_line.strip() in valid_prompts:
+            print("Command finished")
             break
         await asyncio.sleep(0.1)
 
@@ -77,6 +93,29 @@ async def simulated_typing(session, text, delay=0.1):
     await session.async_send_text("\n")  # To execute the command after typing
     await wait_for_prompt(session)
 
+# async def find_or_create_session(app, window_index=None, tab_index=None):
+#     windows = app.windows
+#     if window_index is not None and 0 <= window_index < len(windows):
+#         window = windows[window_index]
+#     else:
+#         window = app.current_window
+#         if not window:
+#             window = await iterm2.Window.async_create(connection)
+
+#     tabs = window.tabs
+#     if tab_index is not None and 0 <= tab_index < len(tabs):
+#         tab = tabs[tab_index]
+#     else:
+#         tab = window.current_tab
+#         if not tab:
+#             tab = await window.async_create_tab()
+
+#     session = tab.current_session
+#     if not session:
+#         session = await tab.async_create_session()
+
+#     return session
+
 async def find_or_create_session(app, window_index=None, tab_index=None):
     windows = app.windows
     if window_index is not None and 0 <= window_index < len(windows):
@@ -86,6 +125,9 @@ async def find_or_create_session(app, window_index=None, tab_index=None):
         if not window:
             window = await iterm2.Window.async_create(connection)
 
+    # Activate the window
+    await window.async_activate()
+
     tabs = window.tabs
     if tab_index is not None and 0 <= tab_index < len(tabs):
         tab = tabs[tab_index]
@@ -94,6 +136,9 @@ async def find_or_create_session(app, window_index=None, tab_index=None):
         if not tab:
             tab = await window.async_create_tab()
 
+    # Activate the tab
+    await tab.async_activate()
+
     session = tab.current_session
     if not session:
         session = await tab.async_create_session()
@@ -101,42 +146,13 @@ async def find_or_create_session(app, window_index=None, tab_index=None):
     return session
 
 
-
-# def extract_commands_from_md(file_path):
-#     with open(file_path, 'r') as file:
-#         content = file.read()
-
-#     md = MarkdownIt()
-#     tokens = md.parse(content)
-#     commands = []
-
-#     in_code_block = False
-#     for token in tokens:
-#         if token.type == "fence" and token.tag == "code":
-#             commands.append(token.content.strip())
-
-#     return commands
-
-# def extract_commands_from_md(file_path):
-#     with open(file_path, 'r') as file:
-#         content = file.read()
-
-#     md = MarkdownIt()
-#     tokens = md.parse(content)
-#     items = []
-
-#     # Create a regular expression pattern for keyboard shortcuts using the dictionary keys
-#     shortcut_pattern = r'\[(' + '|'.join(re.escape(key) for key in keyboard_shortcuts.keys()) + r')\]'
-    
-#     for token in tokens:
-#         if token.type == "fence" and token.tag == "code":
-#             items.append(token.content.strip())
-#         elif token.type == "inline":
-#             shortcut_match = re.match(shortcut_pattern, token.content)
-#             if shortcut_match:
-#                 items.append(shortcut_match.group(1))
-
-#     return items
+# Define grammar for a keyboard shortcut using pyparsing
+LBRACK = pp.Literal("[")
+RBRACK = pp.Literal("]")
+ASTERISK = pp.Literal("*")
+MULTIPLIER = pp.Word(pp.nums).setParseAction(lambda t: int(t[0]))
+KEYWORD = pp.Word(pp.alphas + "+")
+keyboard_command = LBRACK + KEYWORD("keyword") + pp.Optional(ASTERISK + MULTIPLIER("multiplier")) + RBRACK
 
 def extract_commands_from_md(file_path):
     with open(file_path, 'r') as file:
@@ -155,38 +171,70 @@ def extract_commands_from_md(file_path):
                 sleep_time = int(match.group(1))
             items.append((token.content.strip(), sleep_time))
         elif token.type == "inline":
-            shortcut_match = re.match(r'\[(Ctrl\+\w)\]', token.content)
-            if shortcut_match:
-                items.append((shortcut_match.group(1), None))
+            # print(f"Token content: {token.content}")
+            # shortcut_match = re.match(r'\[([A-Za-z0-9\*\+\-]+)\]', token.content)
+            # print(shortcut_match)
+            # if shortcut_match:
+            #     items.append((shortcut_match.group(1), None))
+            try:
+                match = keyboard_command.parseString(token.content, parseAll=True)
+                keyword = match["keyword"]
+                mul = match.get("multiplier", 1)
+                for _ in range(mul):
+                    items.append((keyword, None))
+            except pp.ParseException:
+                pass  # Not a recognized keyboard command
+
 
     return items
 
+# def extract_commands_from_md(file_path):
+#     with open(file_path, 'r') as file:
+#         content = file.read()
+
+#     md = MarkdownIt()
+#     tokens = md.parse(content)
+#     items = []
+
+#     for token in tokens:
+#         if token.type == "fence" and token.tag == "code":
+#             sleep_time = None
+#             # Extract sleep time from the info string
+#             match = re.search(r'sleep=(\d+)', token.info)
+#             if match:
+#                 sleep_time = int(match.group(1))
+#             items.append((token.content.strip(), sleep_time))
+#         elif token.type == "inline":
+#             # Check for repetition syntax
+#             shortcut_match = re.match(r'\[(\w+)\*(\d+)\]', token.content)
+#             if shortcut_match:
+#                 key = shortcut_match.group(1)
+#                 repetitions = int(shortcut_match.group(2))
+#                 for _ in range(repetitions):
+#                     items.append((key, None))
+#             else:
+#                 # Check for regular syntax
+#                 shortcut_match = re.match(r'\[(\w+)\]', token.content)
+#                 if shortcut_match:
+#                     items.append((shortcut_match.group(1), None))
+
+#     return items
 
 
-
-# async def main(connection):
-#     app = await iterm2.async_get_app(connection)
-    
-#     # Find or create the specific window, tab, and session
-#     session = await find_or_create_session(app, window_index=0, tab_index=6)    
-#     commands = extract_commands_from_md("ollama.md")
-#     for item in commands:
-#         if item in keyboard_shortcuts:
-#             await session.async_send_text(keyboard_shortcuts[item])
-#         else:
-#             await simulated_typing(session, item)
-#         await asyncio.sleep(1)
 
 async def main(connection):
+    activate_iterm()
     app = await iterm2.async_get_app(connection)
     
     # Find or create the specific window, tab, and session
     session = await find_or_create_session(app, window_index=2, tab_index=0)
     
-    commands = extract_commands_from_md("ollama.md")
+    commands = extract_commands_from_md("bbc.md")
     for item, sleep_time in commands:
         if item in keyboard_shortcuts:
+            # print(item, keyboard_shortcuts[item])
             await session.async_send_text(keyboard_shortcuts[item])
+            await asyncio.sleep(0.1)
         else:
             await simulated_typing(session, item)
         
