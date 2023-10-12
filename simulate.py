@@ -204,14 +204,10 @@ ALL_ATTRIBUTES = pp.OneOrMore(ATTRIBUTE)
 def extract_attributes_from_info(info_string):
     attributes = {}
     matches = ALL_ATTRIBUTES.searchString(info_string)
-    # Loop through the full_match list, extracting attribute pairs
-    # print("len(matches)", len(matches[0]), matches)
     if len(matches) > 0:
         matching = matches[0]
         for i in range(0, len(matching), 2):
-            print("i", i)
             attributes[matching[i]] = matching[i+1]
-            print("attributes", attributes)
     return attributes
 
 
