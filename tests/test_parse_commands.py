@@ -27,6 +27,16 @@ q
     expected_result = [('q', 1.0, False)]
     assert result == expected_result, f"Expected {expected_result}, got {result}"
 
+def test_quit_less_with_more_sleep():
+    content = '''
+```bash enter=false sleep=2
+q
+```
+'''
+    result = extract_commands_from_text(content)
+    expected_result = [('q', 2.0, False)]
+    assert result == expected_result, f"Expected {expected_result}, got {result}"
+
 def test_run_ollama():
     content = '''
 ```bash

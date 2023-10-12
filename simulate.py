@@ -198,13 +198,20 @@ keyboard_command = (LBRACK + KEYWORD("keyword") +
 EQUALS = pp.Literal("=")
 ATTRIBUTE_NAME = pp.Word(pp.alphas)
 ATTRIBUTE_VALUE = FLOAT | pp.Keyword("true") | pp.Keyword("false")
-ATTRIBUTE = ATTRIBUTE_NAME("name") + EQUALS + ATTRIBUTE_VALUE("value")
+ATTRIBUTE = ATTRIBUTE_NAME("name") + pp.Suppress(EQUALS) + ATTRIBUTE_VALUE("value")
 ALL_ATTRIBUTES = pp.OneOrMore(ATTRIBUTE)
 
 def extract_attributes_from_info(info_string):
     attributes = {}
-    for match in ALL_ATTRIBUTES.searchString(info_string):
-        attributes[match.name] = match.value
+    matches = ALL_ATTRIBUTES.searchString(info_string)
+    # Loop through the full_match list, extracting attribute pairs
+    # print("len(matches)", len(matches[0]), matches)
+    if len(matches) > 0:
+        matching = matches[0]
+        for i in range(0, len(matching), 2):
+            print("i", i)
+            attributes[matching[i]] = matching[i+1]
+            print("attributes", attributes)
     return attributes
 
 
@@ -220,11 +227,7 @@ def extract_commands_from_text(content):
 
     for token in tokens:
         if token.type == "fence" and token.tag == "code":
-            # sleep_time = None
-            # match = re.search(r'sleep=(\d+)', token.info)
-            # if match:
-            #     sleep_time = int(match.group(1))
-            # items.append((token.content.strip(), sleep_time))
+            print("token.info", token.info)
             attributes = extract_attributes_from_info(token.info)
             print("attributes", attributes)
             sleep_time = float(attributes.get("sleep", 1))
