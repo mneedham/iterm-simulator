@@ -4,6 +4,8 @@ import re
 import os
 import pyparsing as pp
 from markdown_it import MarkdownIt
+import argparse
+
 
 keyboard_shortcuts = {
     "Ctrl+A": '\x01',  # Move to the beginning of the line
@@ -36,13 +38,16 @@ keyboard_shortcuts = {
     "ArrowUp": '\x1b[A',
     "ArrowDown": '\x1bB',  # Updated based on the output from tput
     "ArrowRight": '\x1b[C',
-    "ArrowLeft": '\x1b[D'
+    "ArrowLeft": '\x1b[D',
+
+    'Enter': '\n'
 }
 
 valid_prompts = [
     "$",
     ">>>",
     ">>> Send a message (/? for help)",
+    "..."
 
 ]
 
@@ -54,8 +59,8 @@ def activate_iterm():
     """
     os.system(f"osascript -e '{script}'")
 
-# Then call this function at the appropriate place in your script
-activate_iterm()
+# # Then call this function at the appropriate place in your script
+# activate_iterm()
 
 
 
@@ -88,8 +93,9 @@ async def wait_for_prompt(session):
 
 in_less = False
 
-async def simulated_typing(session, text, delay=0.1):
+async def simulated_typing(session, text, delay=0.1, press_enter=True):
     global in_less
+    print(delay)
 
     if "less" in text.strip():
         in_less = True
@@ -98,13 +104,15 @@ async def simulated_typing(session, text, delay=0.1):
         for char in text:
             await session.async_send_text(char)
             await asyncio.sleep(delay)
-        await session.async_send_text("\n")
+        if press_enter:
+            await session.async_send_text("\n")
         await asyncio.sleep(0.1)  # A short sleep just to simulate the immediate execution in less
     else:
         for char in text:
             await session.async_send_text(char)
             await asyncio.sleep(delay)
-        await session.async_send_text("\n")
+        if press_enter:
+            await session.async_send_text("\n")
         await wait_for_prompt(session)
 
     # Check if it's a command to exit from less (typically "q")
@@ -177,96 +185,95 @@ LBRACK = pp.Literal("[")
 RBRACK = pp.Literal("]")
 ASTERISK = pp.Literal("*")
 MULTIPLIER = pp.Word(pp.nums).setParseAction(lambda t: int(t[0]))
+FLOAT = pp.Combine(pp.Word(pp.nums) + pp.Optional(pp.Literal(".") + pp.Word(pp.nums))).setParseAction(lambda t: float(t[0]))
 KEYWORD = pp.Word(pp.alphas + "+")
-keyboard_command = LBRACK + KEYWORD("keyword") + pp.Optional(ASTERISK + MULTIPLIER("multiplier")) + RBRACK
+
+SLEEP_TIME = pp.Suppress(pp.Literal("sleep=")) + FLOAT
+
+keyboard_command = (LBRACK + KEYWORD("keyword") + 
+                    pp.Optional(ASTERISK + MULTIPLIER("multiplier") + 
+                                SLEEP_TIME("sleep_time")) + 
+                    RBRACK)
+
+EQUALS = pp.Literal("=")
+ATTRIBUTE_NAME = pp.Word(pp.alphas)
+ATTRIBUTE_VALUE = FLOAT | pp.Keyword("true") | pp.Keyword("false")
+ATTRIBUTE = ATTRIBUTE_NAME("name") + EQUALS + ATTRIBUTE_VALUE("value")
+ALL_ATTRIBUTES = pp.OneOrMore(ATTRIBUTE)
+
+def extract_attributes_from_info(info_string):
+    attributes = {}
+    for match in ALL_ATTRIBUTES.searchString(info_string):
+        attributes[match.name] = match.value
+    return attributes
+
 
 def extract_commands_from_md(file_path):
     with open(file_path, 'r') as file:
         content = file.read()
+    return extract_commands_from_text(content)
 
+def extract_commands_from_text(content):
     md = MarkdownIt()
     tokens = md.parse(content)
     items = []
 
     for token in tokens:
         if token.type == "fence" and token.tag == "code":
-            sleep_time = None
-            # Extract sleep time from the info string
-            match = re.search(r'sleep=(\d+)', token.info)
-            if match:
-                sleep_time = int(match.group(1))
-            items.append((token.content.strip(), sleep_time))
+            # sleep_time = None
+            # match = re.search(r'sleep=(\d+)', token.info)
+            # if match:
+            #     sleep_time = int(match.group(1))
+            # items.append((token.content.strip(), sleep_time))
+            attributes = extract_attributes_from_info(token.info)
+            print("attributes", attributes)
+            sleep_time = float(attributes.get("sleep", 1))
+            send_enter = attributes.get("enter", "true") == "true"
+            print("send_enter", send_enter)
+            items.append((token.content.strip(), sleep_time, send_enter))
+
         elif token.type == "inline":
-            # print(f"Token content: {token.content}")
-            # shortcut_match = re.match(r'\[([A-Za-z0-9\*\+\-]+)\]', token.content)
-            # print(shortcut_match)
-            # if shortcut_match:
-            #     items.append((shortcut_match.group(1), None))
             try:
                 match = keyboard_command.parseString(token.content, parseAll=True)
                 keyword = match["keyword"]
                 mul = match.get("multiplier", 1)
+                sleep = match["sleep_time"][0] if "sleep_time" in match else 1
+                print("Token:", token.content, "Keyword: ", keyword, "Mul:", mul, "Sleep:", sleep, "Match:", match)
                 for _ in range(mul):
-                    items.append((keyword, None))
+                    items.append((keyword, sleep, True))
             except pp.ParseException:
+                print("No match for:" + token.content)
                 pass  # Not a recognized keyboard command
 
 
     return items
 
-# def extract_commands_from_md(file_path):
-#     with open(file_path, 'r') as file:
-#         content = file.read()
-
-#     md = MarkdownIt()
-#     tokens = md.parse(content)
-#     items = []
-
-#     for token in tokens:
-#         if token.type == "fence" and token.tag == "code":
-#             sleep_time = None
-#             # Extract sleep time from the info string
-#             match = re.search(r'sleep=(\d+)', token.info)
-#             if match:
-#                 sleep_time = int(match.group(1))
-#             items.append((token.content.strip(), sleep_time))
-#         elif token.type == "inline":
-#             # Check for repetition syntax
-#             shortcut_match = re.match(r'\[(\w+)\*(\d+)\]', token.content)
-#             if shortcut_match:
-#                 key = shortcut_match.group(1)
-#                 repetitions = int(shortcut_match.group(2))
-#                 for _ in range(repetitions):
-#                     items.append((key, None))
-#             else:
-#                 # Check for regular syntax
-#                 shortcut_match = re.match(r'\[(\w+)\]', token.content)
-#                 if shortcut_match:
-#                     items.append((shortcut_match.group(1), None))
-
-#     return items
 
 
-
-async def main(connection):
+async def main(connection, args):
+    print(args)
     activate_iterm()
     app = await iterm2.async_get_app(connection)
     
     # Find or create the specific window, tab, and session
-    session = await find_or_create_session(app, window_index=2, tab_index=0)
-    
-    commands = extract_commands_from_md("bbc.md")
-    for item, sleep_time in commands:
+    session = await find_or_create_session(app, window_index=1, tab_index=0)
+
+    commands = extract_commands_from_md(args.filename)
+    for item, sleep_time, press_enter in commands:
+        print("item:", item, sleep_time, keyboard_shortcuts.get(item))
         if item in keyboard_shortcuts:
-            # print(item, keyboard_shortcuts[item])
+            print(f"Send keyboard command for {item} -> {keyboard_shortcuts[item]}")
             await session.async_send_text(keyboard_shortcuts[item])
             await asyncio.sleep(0.1)
         else:
-            await simulated_typing(session, item)
-        
-        # Use the specified sleep time or a default value (e.g., 1 second)
-        await asyncio.sleep(sleep_time or 1)
+            await simulated_typing(session, item, press_enter=press_enter)
+            print("Sleep", sleep_time)
+            await asyncio.sleep(sleep_time or 1)
 
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Process some integers.')
+    parser.add_argument('--filename', metavar='v', type=str)
+    args = parser.parse_args()
 
-iterm2.run_until_complete(main)
+    iterm2.run_until_complete(lambda conn: main(conn, args))
 
