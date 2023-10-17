@@ -47,7 +47,8 @@ valid_prompts = [
     "$",
     ">>>",
     ">>> Send a message (/? for help)",
-    "..."
+    "...",
+    '⚫◗'
 
 ]
 
@@ -226,10 +227,11 @@ def extract_commands_from_text(content):
             print("token.info", token.info)
             attributes = extract_attributes_from_info(token.info)
             print("attributes", attributes)
-            sleep_time = float(attributes.get("sleep", 1))
+            sleep_before = float(attributes.get("sleepBefore", 0))
+            sleep_after = float(attributes.get("sleep", 1))
             send_enter = attributes.get("enter", "true") == "true"
             print("send_enter", send_enter)
-            items.append((token.content.strip(), sleep_time, send_enter))
+            items.append((token.content.strip(), sleep_before, sleep_after, send_enter))
 
         elif token.type == "inline":
             try:
@@ -239,7 +241,7 @@ def extract_commands_from_text(content):
                 sleep = match["sleep_time"][0] if "sleep_time" in match else 1
                 print("Token:", token.content, "Keyword: ", keyword, "Mul:", mul, "Sleep:", sleep, "Match:", match)
                 for _ in range(mul):
-                    items.append((keyword, sleep, True))
+                    items.append((keyword, 0, sleep, True))
             except pp.ParseException:
                 print("No match for:" + token.content)
                 pass  # Not a recognized keyboard command
@@ -255,19 +257,20 @@ async def main(connection, args):
     app = await iterm2.async_get_app(connection)
     
     # Find or create the specific window, tab, and session
-    session = await find_or_create_session(app, window_index=1, tab_index=0)
+    session = await find_or_create_session(app, window_index=0, tab_index=5)
 
     commands = extract_commands_from_md(args.filename)
-    for item, sleep_time, press_enter in commands:
-        print("item:", item, sleep_time, keyboard_shortcuts.get(item))
+    for item, sleep_before, sleep_after, press_enter in commands:
+        print("item:", item, sleep_after, keyboard_shortcuts.get(item))
         if item in keyboard_shortcuts:
             print(f"Send keyboard command for {item} -> {keyboard_shortcuts[item]}")
             await session.async_send_text(keyboard_shortcuts[item])
             await asyncio.sleep(0.1)
         else:
+            await asyncio.sleep(sleep_before or 0)
             await simulated_typing(session, item, press_enter=press_enter)
-            print("Sleep", sleep_time)
-            await asyncio.sleep(sleep_time or 1)
+            print("Sleep", sleep_after)
+            await asyncio.sleep(sleep_after or 1)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Process some integers.')
