@@ -48,7 +48,8 @@ valid_prompts = [
     ">>>",
     ">>> Send a message (/? for help)",
     "...",
-    '⚫◗'
+    '⚫◗',
+    'MN :)'
 
 ]
 
@@ -257,7 +258,9 @@ async def main(connection, args):
     app = await iterm2.async_get_app(connection)
     
     # Find or create the specific window, tab, and session
-    session = await find_or_create_session(app, window_index=0, tab_index=5)
+    window_index = args.window
+    tab_index = args.tab
+    session = await find_or_create_session(app, window_index=window_index, tab_index=tab_index)
 
     commands = extract_commands_from_md(args.filename)
     for item, sleep_before, sleep_after, press_enter in commands:
@@ -275,6 +278,8 @@ async def main(connection, args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Process some integers.')
     parser.add_argument('--filename', metavar='v', type=str)
+    parser.add_argument('--window', metavar='v', type=int, default=0)
+    parser.add_argument('--tab', metavar='v', type=int, default=0)
     args = parser.parse_args()
 
     iterm2.run_until_complete(lambda conn: main(conn, args))
