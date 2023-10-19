@@ -43,7 +43,8 @@ keyboard_shortcuts = {
     'Enter': '\n',
     "Space": '\x20',
     'Delete': '\x7f',
-    'Backspace': '\x08'
+    'Backspace': '\x08',
+    'Escape': '\x1b'
 }
 
 valid_prompts = [
@@ -54,6 +55,8 @@ valid_prompts = [
     '⚫◗',
     'MN :)',
     ':)',
+    '"Modelfile" [New]',
+    '-- INSERT --'
 ]
 
 def activate_iterm():
