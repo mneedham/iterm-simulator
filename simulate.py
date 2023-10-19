@@ -40,7 +40,8 @@ keyboard_shortcuts = {
     "ArrowRight": '\x1b[C',
     "ArrowLeft": '\x1b[D',
 
-    'Enter': '\n'
+    'Enter': '\n',
+    "Space": '\x20'
 }
 
 valid_prompts = [
@@ -49,8 +50,8 @@ valid_prompts = [
     ">>> Send a message (/? for help)",
     "...",
     '⚫◗',
-    'MN :)'
-
+    'MN :)',
+    ':)',
 ]
 
 def activate_iterm():
@@ -115,7 +116,7 @@ async def simulated_typing(session, text, delay=0.1, press_enter=True):
             await asyncio.sleep(delay)
         if press_enter:
             await session.async_send_text("\n")
-        await wait_for_prompt(session)
+            await wait_for_prompt(session)
 
     # Check if it's a command to exit from less (typically "q")
     if text.strip() == "q":
@@ -271,7 +272,7 @@ async def main(connection, args):
             await asyncio.sleep(0.1)
         else:
             await asyncio.sleep(sleep_before or 0)
-            await simulated_typing(session, item, press_enter=press_enter)
+            await simulated_typing(session, item, press_enter=press_enter, delay=args.delay)
             print("Sleep", sleep_after)
             await asyncio.sleep(sleep_after or 1)
 
@@ -280,6 +281,7 @@ if __name__ == "__main__":
     parser.add_argument('--filename', metavar='v', type=str)
     parser.add_argument('--window', metavar='v', type=int, default=0)
     parser.add_argument('--tab', metavar='v', type=int, default=0)
+    parser.add_argument('--delay', metavar='v', type=float, default=0.1)
     args = parser.parse_args()
 
     iterm2.run_until_complete(lambda conn: main(conn, args))
