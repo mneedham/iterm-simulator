@@ -6,7 +6,7 @@ def test_commands():
 [Ctrl+U]
 '''
     result = extract_commands_from_text(content)
-    expected_result = [('Ctrl+U', 1, True)]
+    expected_result = [('Ctrl+U', 0, 1, True)]
     assert result == expected_result, f"Expected {expected_result}, got {result}"
 
 def test_commands_repeat():

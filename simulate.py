@@ -36,12 +36,14 @@ keyboard_shortcuts = {
     "Ctrl+Z": '\x1a',   # Suspend the current process (send SIGTSTP)
 
     "ArrowUp": '\x1b[A',
-    "ArrowDown": '\x1bB',  # Updated based on the output from tput
+    "ArrowDown": '\x1b[B',  # Updated based on the output from tput
     "ArrowRight": '\x1b[C',
     "ArrowLeft": '\x1b[D',
 
     'Enter': '\n',
-    "Space": '\x20'
+    "Space": '\x20',
+    'Delete': '\x7f',
+    'Backspace': '\x08'
 }
 
 valid_prompts = [
@@ -269,7 +271,7 @@ async def main(connection, args):
         if item in keyboard_shortcuts:
             print(f"Send keyboard command for {item} -> {keyboard_shortcuts[item]}")
             await session.async_send_text(keyboard_shortcuts[item])
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(sleep_after or 0.1)
         else:
             await asyncio.sleep(sleep_before or 0)
             await simulated_typing(session, item, press_enter=press_enter, delay=args.delay)
