@@ -8,7 +8,7 @@ import argparse
 
 import pyautogui
 import subprocess
-
+from functools import partial
 
 
 keyboard_shortcuts = {
@@ -49,6 +49,16 @@ keyboard_shortcuts = {
     'Delete': '\x7f',
     'Backspace': '\x08',
     'Escape': '\x1b',
+}
+
+def move(direction, modifier):
+    pyautogui.keyDown(modifier)
+    pyautogui.press(direction)
+    pyautogui.keyUp(modifier)
+
+pyautogui_shortcuts = {
+    "ScrollUpOneLine": partial(move, 'up', 'command'),
+    "ScrollDownOneLine": partial(move, 'down', 'command')
 }
 
 valid_prompts = [
@@ -130,37 +140,6 @@ async def simulated_typing(session, text, delay=0.1, press_enter=True):
     # Check if it's a command to exit from less (typically "q")
     if text.strip() == "q":
         in_less = False
-
-
-# async def simulated_typing(session, text, delay=0.1):
-#     for char in text:
-#         await session.async_send_text(char)
-#         await asyncio.sleep(delay)
-#     await session.async_send_text("\n")  # To execute the command after typing
-#     await wait_for_prompt(session)
-
-# async def find_or_create_session(app, window_index=None, tab_index=None):
-#     windows = app.windows
-#     if window_index is not None and 0 <= window_index < len(windows):
-#         window = windows[window_index]
-#     else:
-#         window = app.current_window
-#         if not window:
-#             window = await iterm2.Window.async_create(connection)
-
-#     tabs = window.tabs
-#     if tab_index is not None and 0 <= tab_index < len(tabs):
-#         tab = tabs[tab_index]
-#     else:
-#         tab = window.current_tab
-#         if not tab:
-#             tab = await window.async_create_tab()
-
-#     session = tab.current_session
-#     if not session:
-#         session = await tab.async_create_session()
-
-#     return session
 
 async def find_or_create_session(app, window_index=None, tab_index=None):
     windows = app.windows
@@ -280,22 +259,9 @@ async def main(connection, args):
             await session.async_send_text(keyboard_shortcuts[item])
             await asyncio.sleep(sleep_after or 0.1)
         else:
-            if item == 'ScrollUpOneLine':
-                print("scroll up")
-#                 script = '''
-# tell application "System Events" to tell process "iTerm"
-#     key code 126 using command down
-# end tell
-# '''
-
-#                 subprocess.run(["osascript", "-e", script])
-
-                pyautogui.keyDown('command')
-                pyautogui.press('up')
-                pyautogui.press('up')
-                pyautogui.press('up')
-                pyautogui.press('up')
-                pyautogui.keyUp('command')
+            if item in pyautogui_shortcuts:
+                pyautogui_shortcuts[item]()
+                await asyncio.sleep(sleep_after or 0.1)
 
             else:
                 await asyncio.sleep(sleep_before or 0)
