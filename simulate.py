@@ -6,6 +6,10 @@ import pyparsing as pp
 from markdown_it import MarkdownIt
 import argparse
 
+import pyautogui
+import subprocess
+
+
 
 keyboard_shortcuts = {
     "Ctrl+A": '\x01',  # Move to the beginning of the line
@@ -44,7 +48,7 @@ keyboard_shortcuts = {
     "Space": '\x20',
     'Delete': '\x7f',
     'Backspace': '\x08',
-    'Escape': '\x1b'
+    'Escape': '\x1b',
 }
 
 valid_prompts = [
@@ -57,7 +61,7 @@ valid_prompts = [
     ':)',
     '"Modelfile" [New]',
     '-- INSERT --'
-]
+] + [f"In [{id}]:" for id in range(0,100)]
 
 def activate_iterm():
     script = """
@@ -276,10 +280,28 @@ async def main(connection, args):
             await session.async_send_text(keyboard_shortcuts[item])
             await asyncio.sleep(sleep_after or 0.1)
         else:
-            await asyncio.sleep(sleep_before or 0)
-            await simulated_typing(session, item, press_enter=press_enter, delay=args.delay)
-            print("Sleep", sleep_after)
-            await asyncio.sleep(sleep_after or 1)
+            if item == 'ScrollUpOneLine':
+                print("scroll up")
+#                 script = '''
+# tell application "System Events" to tell process "iTerm"
+#     key code 126 using command down
+# end tell
+# '''
+
+#                 subprocess.run(["osascript", "-e", script])
+
+                pyautogui.keyDown('command')
+                pyautogui.press('up')
+                pyautogui.press('up')
+                pyautogui.press('up')
+                pyautogui.press('up')
+                pyautogui.keyUp('command')
+
+            else:
+                await asyncio.sleep(sleep_before or 0)
+                await simulated_typing(session, item, press_enter=press_enter, delay=args.delay)
+                print("Sleep", sleep_after)
+                await asyncio.sleep(sleep_after or 1)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Process some integers.')
