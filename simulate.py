@@ -217,6 +217,7 @@ class Command:
     sleep_before: float = 0.0
     sleep_after: float = 1.0
     press_enter: bool = True
+    strip: bool = True
 
 def extract_commands_from_text(content):
     md = MarkdownIt()
@@ -231,9 +232,9 @@ def extract_commands_from_text(content):
             sleep_before = float(attributes.get("sleepBefore", 0))
             sleep_after = float(attributes.get("sleep", 1))
             send_enter = attributes.get("enter", "true") == "true"
+            strip_whitespace = attributes.get("strip", "true") == "true"
             print("send_enter", send_enter)
-            items.append(Command(token.content.strip(), sleep_before, sleep_after, send_enter))
-            # items.append((token.content.strip(), sleep_before, sleep_after, send_enter))
+            items.append(Command(token.content.strip(), sleep_before, sleep_after, send_enter, strip_whitespace))
 
         elif token.type == "inline":
             try:
@@ -243,8 +244,7 @@ def extract_commands_from_text(content):
                 sleep = match["sleep_time"][0] if "sleep_time" in match else 1
                 print("Token:", token.content, "Keyword: ", keyword, "Mul:", mul, "Sleep:", sleep, "Match:", match)
                 for _ in range(mul):
-                    items.append(Command(keyword, 0, sleep, True))
-                    # items.append((keyword, 0, sleep, True))
+                    items.append(Command(item = keyword, sleep_after=sleep))
             except pp.ParseException:
                 print("No match for:" + token.content)
                 pass  # Not a recognized keyboard command
