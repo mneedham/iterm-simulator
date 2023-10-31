@@ -208,6 +208,16 @@ def extract_commands_from_md(file_path):
         content = file.read()
     return extract_commands_from_text(content)
 
+from dataclasses import dataclass, astuple
+
+@dataclass
+class Command:
+    """A terminal command"""
+    item:str
+    sleep_before: float = 0.0
+    sleep_after: float = 1.0
+    press_enter: bool = True
+
 def extract_commands_from_text(content):
     md = MarkdownIt()
     tokens = md.parse(content)
@@ -222,7 +232,8 @@ def extract_commands_from_text(content):
             sleep_after = float(attributes.get("sleep", 1))
             send_enter = attributes.get("enter", "true") == "true"
             print("send_enter", send_enter)
-            items.append((token.content.strip(), sleep_before, sleep_after, send_enter))
+            items.append(Command(token.content.strip(), sleep_before, sleep_after, send_enter))
+            # items.append((token.content.strip(), sleep_before, sleep_after, send_enter))
 
         elif token.type == "inline":
             try:
@@ -232,7 +243,8 @@ def extract_commands_from_text(content):
                 sleep = match["sleep_time"][0] if "sleep_time" in match else 1
                 print("Token:", token.content, "Keyword: ", keyword, "Mul:", mul, "Sleep:", sleep, "Match:", match)
                 for _ in range(mul):
-                    items.append((keyword, 0, sleep, True))
+                    items.append(Command(keyword, 0, sleep, True))
+                    # items.append((keyword, 0, sleep, True))
             except pp.ParseException:
                 print("No match for:" + token.content)
                 pass  # Not a recognized keyboard command
@@ -253,7 +265,8 @@ async def main(connection, args):
     session = await find_or_create_session(app, window_index=window_index, tab_index=tab_index)
 
     commands = extract_commands_from_md(args.filename)
-    for item, sleep_before, sleep_after, press_enter in commands:
+    for command in commands:
+        item, sleep_before, sleep_after, press_enter = astuple(command)
         print("item:", item, sleep_after, press_enter, keyboard_shortcuts.get(item))
         if item in keyboard_shortcuts:
             print(f"Send keyboard command for {item} -> {keyboard_shortcuts[item]}")

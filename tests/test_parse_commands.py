@@ -1,4 +1,4 @@
-from simulate import extract_commands_from_text
+from simulate import extract_commands_from_text, Command
 
 
 def test_commands():
@@ -6,7 +6,7 @@ def test_commands():
 [Ctrl+U]
 '''
     result = extract_commands_from_text(content)
-    expected_result = [('Ctrl+U', 0, 1, True)]
+    expected_result = [Command('Ctrl+U', 0, 1, True)]
     assert result == expected_result, f"Expected {expected_result}, got {result}"
 
 def test_commands_repeat():
@@ -14,7 +14,7 @@ def test_commands_repeat():
 [j*5sleep=0.1]
 '''
     result = extract_commands_from_text(content)
-    expected_result = [('j', 0.0, 0.1, True), ('j', 0.0, 0.1, True), ('j', 0.0, 0.1, True), ('j', 0.0, 0.1, True), ('j', 0.0, 0.1, True)]
+    expected_result = [Command('j', 0.0, 0.1, True), Command('j', 0.0, 0.1, True), Command('j', 0.0, 0.1, True), Command('j', 0.0, 0.1, True), Command('j', 0.0, 0.1, True)]
     assert result == expected_result, f"Expected {expected_result}, got {result}"
 
 def test_quit_less():
@@ -24,7 +24,7 @@ q
 ```
 '''
     result = extract_commands_from_text(content)
-    expected_result = [('q', 0.0, 1.0, False)]
+    expected_result = [Command('q', 0.0, 1.0, False)]
     assert result == expected_result, f"Expected {expected_result}, got {result}"
 
 def test_quit_less_with_more_sleep():
@@ -34,7 +34,7 @@ q
 ```
 '''
     result = extract_commands_from_text(content)
-    expected_result = [('q', 1.0, 2.0, False)]
+    expected_result = [Command('q', 1.0, 2.0, False)]
     assert result == expected_result, f"Expected {expected_result}, got {result}"
 
 def test_run_ollama():
@@ -44,5 +44,5 @@ ollama run mistral --verbose
 ```
 '''
     result = extract_commands_from_text(content)
-    expected_result = [('ollama run mistral --verbose', 0.0, 1.0, True)]
+    expected_result = [Command('ollama run mistral --verbose', 0.0, 1.0, True)]
     assert result == expected_result, f"Expected {expected_result}, got {result}"
