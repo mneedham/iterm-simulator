@@ -71,7 +71,7 @@ valid_prompts = [
     ':)',
     '"Modelfile" [New]',
     '-- INSERT --'
-] + [f"In [{id}]:" for id in range(0,100)]
+] + [f"In [{id}]:" for id in range(0,1000)]
 
 def activate_iterm():
     script = """
@@ -134,6 +134,7 @@ async def simulated_typing(session, text, delay=0.1, press_enter=True):
             await session.async_send_text(char)
             await asyncio.sleep(delay)
         if press_enter:
+            print(f"Press enter [{press_enter}]")
             await session.async_send_text("\n")
             await wait_for_prompt(session)
 
@@ -253,7 +254,7 @@ async def main(connection, args):
 
     commands = extract_commands_from_md(args.filename)
     for item, sleep_before, sleep_after, press_enter in commands:
-        print("item:", item, sleep_after, keyboard_shortcuts.get(item))
+        print("item:", item, sleep_after, press_enter, keyboard_shortcuts.get(item))
         if item in keyboard_shortcuts:
             print(f"Send keyboard command for {item} -> {keyboard_shortcuts[item]}")
             await session.async_send_text(keyboard_shortcuts[item])
