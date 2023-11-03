@@ -115,9 +115,40 @@ async def wait_for_prompt(session):
 
 in_less = False
 
-async def simulated_typing(session, text, delay=0.1, press_enter=True):
+# async def simulated_typing(session, text, delay=0.1, press_enter=True):
+#     global in_less
+#     print(delay)
+
+#     if "less" in text.strip():
+#         in_less = True
+
+#     if in_less:
+#         for char in text:
+#             await session.async_send_text(char)
+#             await asyncio.sleep(delay)
+#         if press_enter:
+#             await session.async_send_text("\n")
+#         await asyncio.sleep(0.1)  # A short sleep just to simulate the immediate execution in less
+#     else:
+#         for char in text:
+#             await session.async_send_text(char)
+#             await asyncio.sleep(delay)
+#         if press_enter:
+#             print(f"Press enter [{press_enter}]")
+#             await session.async_send_text("\n")
+#             await wait_for_prompt(session)
+
+#     # Check if it's a command to exit from less (typically "q")
+#     if text.strip() == "q":
+#         in_less = False
+
+async def simulated_typing(session, command, delay=0.1):
     global in_less
     print(delay)
+
+    text = command.text()
+    press_enter = command.press_enter
+    wait = command.wait_for_prompt    
 
     if "less" in text.strip():
         in_less = True
@@ -134,13 +165,17 @@ async def simulated_typing(session, text, delay=0.1, press_enter=True):
             await session.async_send_text(char)
             await asyncio.sleep(delay)
         if press_enter:
-            print(f"Press enter [{press_enter}]")
+            print(f"Press enter [{press_enter}], Wait [{wait}], Command [{command}]")
             await session.async_send_text("\n")
-            await wait_for_prompt(session)
+            if wait:
+                await wait_for_prompt(session)
+            else: 
+                await asyncio.sleep(0.1)
 
     # Check if it's a command to exit from less (typically "q")
     if text.strip() == "q":
         in_less = False
+
 
 async def find_or_create_session(app, window_index=None, tab_index=None):
     windows = app.windows
@@ -218,6 +253,14 @@ class Command:
     sleep_after: float = 1.0
     press_enter: bool = True
     strip: bool = True
+    wait_for_prompt: bool = False
+
+    def text(self) -> str:
+        if self.strip:
+            return self.item.strip()
+        else:
+            return self.item.rstrip("\n")
+
 
 def extract_commands_from_text(content):
     md = MarkdownIt()
@@ -229,12 +272,16 @@ def extract_commands_from_text(content):
             print("token.info", token.info)
             attributes = extract_attributes_from_info(token.info)
             print("attributes", attributes)
+
             sleep_before = float(attributes.get("sleepBefore", 0))
             sleep_after = float(attributes.get("sleep", 1))
             send_enter = attributes.get("enter", "true") == "true"
             strip_whitespace = attributes.get("strip", "true") == "true"
-            print("send_enter", send_enter)
-            items.append(Command(token.content.strip(), sleep_before, sleep_after, send_enter, strip_whitespace))
+            wait_prompt = attributes.get("wait", "true") == "true"
+            
+            command = Command(token.content, sleep_before, sleep_after, send_enter, strip_whitespace, wait_for_prompt=wait_prompt)
+            print("send_enter", send_enter, "wait_prompt", wait_prompt, "token.content", token.content, "Command", command)
+            items.append(command)
 
         elif token.type == "inline":
             try:
@@ -266,7 +313,7 @@ async def main(connection, args):
 
     commands = extract_commands_from_md(args.filename)
     for command in commands:
-        item, sleep_before, sleep_after, press_enter = astuple(command)
+        item, sleep_before, sleep_after, press_enter, strip, wait_for_prompt = astuple(command)
         print("item:", item, sleep_after, press_enter, keyboard_shortcuts.get(item))
         if item in keyboard_shortcuts:
             print(f"Send keyboard command for {item} -> {keyboard_shortcuts[item]}")
@@ -279,7 +326,8 @@ async def main(connection, args):
 
             else:
                 await asyncio.sleep(sleep_before or 0)
-                await simulated_typing(session, item, press_enter=press_enter, delay=args.delay)
+                # await simulated_typing(session, command.text(), press_enter=press_enter, delay=args.delay)
+                await simulated_typing(session, command = command, delay=args.delay)
                 print("Sleep", sleep_after)
                 await asyncio.sleep(sleep_after or 1)
 
