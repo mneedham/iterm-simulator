@@ -80,6 +80,8 @@ valid_prompts = [
     '⚡',
     '"Modelfile" [New]',
     '-- INSERT --'
+    '-- INSERT --',
+    '...:'
 ] + [f"In [{id}]:" for id in range(0,1000)]
 
 def activate_iterm():
@@ -89,10 +91,6 @@ def activate_iterm():
         end tell
     """
     os.system(f"osascript -e '{script}'")
-
-# # Then call this function at the appropriate place in your script
-# activate_iterm()
-
 
 
 async def wait_for_prompt(session):
