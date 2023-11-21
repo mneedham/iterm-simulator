@@ -81,7 +81,6 @@ valid_prompts = [
     '"Modelfile" [New]',
     '-- INSERT --'
     '-- INSERT --',
-    '...:'
 ] + [f"In [{id}]:" for id in range(0,1000)]
 
 def activate_iterm():
