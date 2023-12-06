@@ -206,6 +206,42 @@ async def find_or_create_session(app, window_index=None, tab_index=None):
 
     return session
 
+async def select_tab(app, window_index=None, tab_index=None):
+    # Get the list of windows
+    windows = app.windows
+
+    # Check if a specific window is targeted, else use the current window
+    if window_index is not None and 0 <= window_index < len(windows):
+        window = windows[window_index]
+    else:
+        window = app.current_window
+        if not window:
+            return None  # No active window found
+
+    # Activate the window
+    await window.async_activate()
+
+    # Get the list of tabs in the window
+    tabs = window.tabs
+
+    # Check if a specific tab is targeted
+    if tab_index is not None and 0 <= tab_index < len(tabs):
+        tab = tabs[tab_index]
+    else:
+        return None  # Invalid tab index or no tab index provided
+
+    # Activate the selected tab
+    await tab.async_activate()
+
+    # Update the session to the current session of the newly activated tab
+    session = tab.current_session
+    if not session:
+        session = await tab.async_create_session()
+
+    return session
+
+
+
 
 # Define grammar for a keyboard shortcut using pyparsing
 LBRACK = pp.Literal("[")
@@ -254,6 +290,7 @@ class Command:
     press_enter: bool = True
     strip: bool = True
     wait_for_prompt: bool = False
+    selected_tab: int = -1
 
     def text(self) -> str:
         if self.strip:
@@ -278,8 +315,9 @@ def extract_commands_from_text(content):
             send_enter = attributes.get("enter", "true") == "true"
             strip_whitespace = attributes.get("strip", "true") == "true"
             wait_prompt = attributes.get("wait", "true") == "true"
+            selected_tab = int(attributes.get("tab", "-1"))
             
-            command = Command(token.content, sleep_before, sleep_after, send_enter, strip_whitespace, wait_for_prompt=wait_prompt)
+            command = Command(token.content, sleep_before, sleep_after, send_enter, strip_whitespace, wait_for_prompt=wait_prompt, selected_tab=selected_tab)
             print("send_enter", send_enter, "wait_prompt", wait_prompt, "token.content", token.content, "Command", command)
             items.append(command)
 
@@ -313,23 +351,25 @@ async def main(connection, args):
 
     commands = extract_commands_from_md(args.filename)
     for command in commands:
-        item, sleep_before, sleep_after, press_enter, strip, wait_for_prompt = astuple(command)
+        item, sleep_before, sleep_after, press_enter, strip, wait_for_prompt, selected_tab = astuple(command)
         print("item:", item, sleep_after, press_enter, keyboard_shortcuts.get(item))
         if item in keyboard_shortcuts:
             print(f"Send keyboard command for {item} -> {keyboard_shortcuts[item]}")
             await session.async_send_text(keyboard_shortcuts[item])
             await asyncio.sleep(sleep_after or 0.1)
+        elif item in pyautogui_shortcuts:
+            pyautogui_shortcuts[item]()
+            await asyncio.sleep(sleep_after or 0.1)
+        elif item.strip() == "SelectTab":
+            await asyncio.sleep(sleep_before or 0)
+            session = await select_tab(app, window_index=window_index, tab_index=selected_tab)
+            await asyncio.sleep(sleep_after or 1)
         else:
-            if item in pyautogui_shortcuts:
-                pyautogui_shortcuts[item]()
-                await asyncio.sleep(sleep_after or 0.1)
-
-            else:
-                await asyncio.sleep(sleep_before or 0)
-                # await simulated_typing(session, command.text(), press_enter=press_enter, delay=args.delay)
-                await simulated_typing(session, command = command, delay=args.delay)
-                print("Sleep", sleep_after)
-                await asyncio.sleep(sleep_after or 1)
+            await asyncio.sleep(sleep_before or 0)
+            # await simulated_typing(session, command.text(), press_enter=press_enter, delay=args.delay)
+            await simulated_typing(session, command = command, delay=args.delay)
+            print("Sleep", sleep_after)
+            await asyncio.sleep(sleep_after or 1)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Process some integers.')
