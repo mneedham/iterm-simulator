@@ -46,7 +46,7 @@ keyboard_shortcuts = {
 
     'Enter': '\n',
     "Space": '\x20',
-    'Delete': '\x7f',
+    # 'Delete': '\x7f',
     'Backspace': '\x08',
     'Escape': '\x1b',
 }
@@ -58,7 +58,10 @@ def move(direction, modifier):
 
 pyautogui_shortcuts = {
     "ScrollUpOneLine": partial(move, 'up', 'command'),
-    "ScrollDownOneLine": partial(move, 'down', 'command')
+    "ScrollDownOneLine": partial(move, 'down', 'command'),
+    "Alt+Left": partial(move, 'left', 'alt'),
+    "Alt+Right": partial(move, 'right', 'alt'),
+    "Delete": lambda: pyautogui.press('delete')
 }
 
 valid_prompts = [
@@ -115,32 +118,6 @@ async def wait_for_prompt(session):
 
 in_less = False
 
-# async def simulated_typing(session, text, delay=0.1, press_enter=True):
-#     global in_less
-#     print(delay)
-
-#     if "less" in text.strip():
-#         in_less = True
-
-#     if in_less:
-#         for char in text:
-#             await session.async_send_text(char)
-#             await asyncio.sleep(delay)
-#         if press_enter:
-#             await session.async_send_text("\n")
-#         await asyncio.sleep(0.1)  # A short sleep just to simulate the immediate execution in less
-#     else:
-#         for char in text:
-#             await session.async_send_text(char)
-#             await asyncio.sleep(delay)
-#         if press_enter:
-#             print(f"Press enter [{press_enter}]")
-#             await session.async_send_text("\n")
-#             await wait_for_prompt(session)
-
-#     # Check if it's a command to exit from less (typically "q")
-#     if text.strip() == "q":
-#         in_less = False
 
 async def simulated_typing(session, command, delay=0.1):
     global in_less
@@ -341,6 +318,9 @@ def extract_commands_from_text(content):
 
 async def main(connection, args):
     print(args)
+
+    turbo_pause = args.turbo_pause
+
     activate_iterm()
     app = await iterm2.async_get_app(connection)
     
@@ -356,20 +336,19 @@ async def main(connection, args):
         if item in keyboard_shortcuts:
             print(f"Send keyboard command for {item} -> {keyboard_shortcuts[item]}")
             await session.async_send_text(keyboard_shortcuts[item])
-            await asyncio.sleep(sleep_after or 0.1)
+            await asyncio.sleep((sleep_after or 0.1) / args.turbo_pause)
         elif item in pyautogui_shortcuts:
             pyautogui_shortcuts[item]()
-            await asyncio.sleep(sleep_after or 0.1)
+            await asyncio.sleep((sleep_after or 0.1) / args.turbo_pause)
         elif item.strip() == "SelectTab":
             await asyncio.sleep(sleep_before or 0)
             session = await select_tab(app, window_index=window_index, tab_index=selected_tab)
-            await asyncio.sleep(sleep_after or 1)
+            await asyncio.sleep((sleep_after or 1) / args.turbo_pause)
         else:
-            await asyncio.sleep(sleep_before or 0)
-            # await simulated_typing(session, command.text(), press_enter=press_enter, delay=args.delay)
+            await asyncio.sleep((sleep_before or 0) / args.turbo_pause)
             await simulated_typing(session, command = command, delay=args.delay)
             print("Sleep", sleep_after)
-            await asyncio.sleep(sleep_after or 1)
+            await asyncio.sleep((sleep_after or 1) / args.turbo_pause)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Process some integers.')
@@ -377,6 +356,7 @@ if __name__ == "__main__":
     parser.add_argument('--window', metavar='v', type=int, default=0)
     parser.add_argument('--tab', metavar='v', type=int, default=0)
     parser.add_argument('--delay', metavar='v', type=float, default=0.1)
+    parser.add_argument('--turbo-pause', metavar='v', type=float, default=1.0)
     args = parser.parse_args()
 
     iterm2.run_until_complete(lambda conn: main(conn, args))
