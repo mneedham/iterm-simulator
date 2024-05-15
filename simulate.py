@@ -52,16 +52,18 @@ keyboard_shortcuts = {
 }
 
 def move(direction, modifier):
-    pyautogui.keyDown(modifier)
-    pyautogui.press(direction)
-    pyautogui.keyUp(modifier)
+        pyautogui.keyDown(modifier)
+        pyautogui.press(direction)
+        pyautogui.keyUp(modifier)
 
 pyautogui_shortcuts = {
     "ScrollUpOneLine": partial(move, 'up', 'command'),
     "ScrollDownOneLine": partial(move, 'down', 'command'),
+    "Shift+G": partial(move, 'g', 'shift'),
     "Alt+Left": partial(move, 'left', 'alt'),
     "Alt+Right": partial(move, 'right', 'alt'),
-    "Delete": lambda: pyautogui.press('delete')
+    "Delete": lambda: pyautogui.press('delete'),
+    "Tab": lambda: pyautogui.press('tab')
 }
 
 valid_prompts = [
@@ -69,9 +71,12 @@ valid_prompts = [
     ">>>",
     ">>> Send a message (/? for help)",
     "...",
+    ":",
     '⚫◗',
     'MN :)',
     ':)',
+    '😊',
+    '⚡',
     '"Modelfile" [New]',
     '-- INSERT --'
 ] + [f"In [{id}]:" for id in range(0,1000)]
