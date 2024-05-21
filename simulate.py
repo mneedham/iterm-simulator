@@ -58,6 +58,7 @@ def move(direction, modifier):
 
 pyautogui_shortcuts = {
     "ScrollUpOneLine": partial(move, 'up', 'command'),
+    "ScrollUpOnePage": partial(move, 'pageup', 'command'),
     "ScrollDownOneLine": partial(move, 'down', 'command'),
     "Shift+G": partial(move, 'g', 'shift'),
     "Alt+Left": partial(move, 'left', 'alt'),
@@ -241,12 +242,13 @@ keyboard_command = (LBRACK + KEYWORD("keyword") +
                     RBRACK)
 
 EQUALS = pp.Literal("=")
-ATTRIBUTE_NAME = pp.Word(pp.alphas)
+ATTRIBUTE_NAME = pp.Word(pp.alphas + "_")
 ATTRIBUTE_VALUE = FLOAT | pp.Keyword("true") | pp.Keyword("false")
 ATTRIBUTE = ATTRIBUTE_NAME("name") + pp.Suppress(EQUALS) + ATTRIBUTE_VALUE("value")
 ALL_ATTRIBUTES = pp.OneOrMore(ATTRIBUTE)
 
 def extract_attributes_from_info(info_string):
+    print("info_string", info_string)
     attributes = {}
     matches = ALL_ATTRIBUTES.searchString(info_string)
     if len(matches) > 0:
@@ -295,13 +297,26 @@ def extract_commands_from_text(content):
             sleep_before = float(attributes.get("sleepBefore", 0))
             sleep_after = float(attributes.get("sleep", 1))
             send_enter = attributes.get("enter", "true") == "true"
+            soft_enter = attributes.get("soft_enter", "false") == "true"
             strip_whitespace = attributes.get("strip", "true") == "true"
             wait_prompt = attributes.get("wait", "true") == "true"
             selected_tab = int(attributes.get("tab", "-1"))
             
-            command = Command(token.content, sleep_before, sleep_after, send_enter, strip_whitespace, wait_for_prompt=wait_prompt, selected_tab=selected_tab)
-            print("send_enter", send_enter, "wait_prompt", wait_prompt, "token.content", token.content, "Command", command)
-            items.append(command)
+            print("token.content", token.content, soft_enter)
+            if soft_enter:
+                print("soft_enter", send_enter)
+                lines = token.content.strip().split("\n")
+                print("lines", lines)
+                for line in lines[:-1]:
+                    items.append(Command(line, sleep_before, sleep_after, False, strip_whitespace, wait_for_prompt=False, selected_tab=selected_tab))
+                    items.append(Command("Ctrl+Q", sleep_before, sleep_after/2, True, strip_whitespace, wait_for_prompt=False, selected_tab=selected_tab))
+                    items.append(Command("Ctrl+J", sleep_before, sleep_after/2, True, strip_whitespace, wait_for_prompt=False, selected_tab=selected_tab))
+                
+                items.append(Command(lines[-1], sleep_before, sleep_after, send_enter, strip_whitespace, wait_for_prompt=wait_prompt, selected_tab=selected_tab))
+            else:
+                command = Command(token.content, sleep_before, sleep_after, send_enter, strip_whitespace, wait_for_prompt=wait_prompt, selected_tab=selected_tab)
+                print("send_enter", send_enter, "wait_prompt", wait_prompt, "token.content", token.content, "Command", command)
+                items.append(command)
 
         elif token.type == "inline":
             try:
@@ -336,6 +351,7 @@ async def main(connection, args):
 
     commands = extract_commands_from_md(args.filename)
     for command in commands:
+        # item, sleep_before, sleep_after, press_enter, soft_enter, strip, wait_for_prompt, selected_tab = astuple(command)
         item, sleep_before, sleep_after, press_enter, strip, wait_for_prompt, selected_tab = astuple(command)
         print("item:", item, sleep_after, press_enter, keyboard_shortcuts.get(item))
         if item in keyboard_shortcuts:
