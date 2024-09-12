@@ -71,7 +71,8 @@ pyautogui_shortcuts = {
     "Delete": lambda: pyautogui.press('delete'),
     "Shift+Enter": partial(move, 'enter', 'shift'),
     "Cmd+V": partial(move, 'v', 'command'),
-    "Ctrl+D": partial(move, 'd', 'ctrl')
+    "Ctrl+D": partial(move, 'd', 'ctrl'),
+    "Command+Space": partial(move, 'space', 'command')
 }
 
 valid_prompts = [
@@ -90,6 +91,7 @@ valid_prompts = [
     '"Modelfile" [New]',
     '-- INSERT --'
     '-- INSERT --',
+    "   - If you want to submit another line, end your input with '\'."
 ] + [f"In [{id}]:" for id in range(0,1000)]
 
 def activate_iterm():
@@ -324,7 +326,7 @@ def extract_commands_from_text(content):
                 lines = token.content.strip().split("\n")
                 print("lines", lines)
                 for line in lines[:-1]:
-                    items.append(Command(line, sleep_before, sleep_after, False, strip_whitespace, wait_for_prompt=False, selected_tab=selected_tab))
+                    items.append(Command(line, sleep_before, sleep_after, False, False, strip_whitespace, wait_for_prompt=False, selected_tab=selected_tab))
                     items.append(Command("Ctrl+Q", sleep_before, sleep_after/2, True, strip_whitespace, wait_for_prompt=False, selected_tab=selected_tab))
                     items.append(Command("Ctrl+J", sleep_before, sleep_after/2, True, strip_whitespace, wait_for_prompt=False, selected_tab=selected_tab))
                 
@@ -366,7 +368,9 @@ async def main(connection, args):
     session = await find_or_create_session(app, window_index=window_index, tab_index=tab_index)
 
     commands = extract_commands_from_md(args.filename)
+    
     for command in commands:
+        print(command)
         # item, sleep_before, sleep_after, press_enter, soft_enter, strip, wait_for_prompt, selected_tab = astuple(command)        
         item, sleep_before, sleep_after, press_enter, press_shift_enter, strip, wait_for_prompt, selected_tab = astuple(command)
         print("item:", item, sleep_after, press_enter, keyboard_shortcuts.get(item))
