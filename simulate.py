@@ -56,15 +56,36 @@ def move(direction, modifier):
         pyautogui.press(direction)
         pyautogui.keyUp(modifier)
 
+def multi_press(modifier1, modifier2, key):
+    pyautogui.keyDown(modifier1)
+    pyautogui.keyDown(modifier2)
+    pyautogui.press(key)
+    pyautogui.keyUp(modifier2)
+    pyautogui.keyUp(modifier1)
+
+def press(keys):
+    for key in keys:
+        pyautogui.press(key)
+
 pyautogui_shortcuts = {
     "ScrollUpOneLine": partial(move, 'up', 'command'),
     "ScrollUpOnePage": partial(move, 'pageup', 'command'),
     "ScrollDownOneLine": partial(move, 'down', 'command'),
     "Shift+G": partial(move, 'g', 'shift'),
     "Alt+Left": partial(move, 'left', 'alt'),
+    "Alt+Backspace": partial(move, 'backspace', 'alt'),
     "Alt+Right": partial(move, 'right', 'alt'),
+    "Command+C": partial(move, 'c', 'command'),
+    "Command+V": partial(move, 'v', 'command'),
+    "Command+Right": partial(move, 'right', 'command'),
+    "Shift+Enter": partial(move, 'enter', 'shift'),
     "Delete": lambda: pyautogui.press('delete'),
-    "Tab": lambda: pyautogui.press('tab')
+    "Tab": lambda: pyautogui.press('tab'),
+    "pyArrowUp": lambda: pyautogui.press('up'),
+    "pySpace": lambda: pyautogui.press('space'),    
+    "pyArrowLeft": lambda: pyautogui.press('left'),
+    "CopyMode": lambda: multi_press("shift", "command", "C"),
+    "SelectByCharacter": lambda: pyautogui.hotkey('c', 'space')
 }
 
 valid_prompts = [
