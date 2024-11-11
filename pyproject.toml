@@ -4,6 +4,7 @@ version = "0.1.0"
 description = ""
 authors = ["Mark Needham <m.h.needham@gmail.com>"]
 readme = "README.md"
+package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.11"
@@ -15,6 +16,7 @@ pyparsing = "^3.1.1"
 click = "^8.1.7"
 pytest = "^7.4.2"
 pyautogui = "^0.9.54"
+rubicon-objc = "^0.4.7"
 
 
 [build-system]
