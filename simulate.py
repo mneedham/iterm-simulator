@@ -9,6 +9,7 @@ import argparse
 import pyautogui
 import subprocess
 from functools import partial
+import pyperclip
 
 
 keyboard_shortcuts = {
@@ -105,6 +106,7 @@ valid_prompts = [
     "...",
     ":",
     '⚫◗',
+    ">",
     'MN :)',
     ':)',
     '😊',
@@ -340,6 +342,12 @@ def extract_commands_from_text(content):
             strip_whitespace = attributes.get("strip", "true") == "true"
             wait_prompt = attributes.get("wait", "true") == "true"
             selected_tab = int(attributes.get("tab", "-1"))
+
+            copy_to_clipboard = attributes.get("copyToClipboard", "false") == "true"
+            if copy_to_clipboard:
+                pyperclip.copy(token.content)
+                continue
+
             
             print("token.content", token.content, soft_enter)
             if soft_enter:
