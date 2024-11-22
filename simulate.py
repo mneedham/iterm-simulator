@@ -345,7 +345,10 @@ def extract_commands_from_text(content):
 
             copy_to_clipboard = attributes.get("copyToClipboard", "false") == "true"
             if copy_to_clipboard:
-                pyperclip.copy(token.content)
+                if strip_whitespace:
+                    pyperclip.copy(token.content.rstrip())
+                else:
+                    pyperclip.copy(token.content)
                 continue
 
             
