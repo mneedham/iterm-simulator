@@ -52,6 +52,8 @@ keyboard_shortcuts = {
     'Escape': '\x1b',
 }
 
+clipboard = []
+
 def move(direction, modifier):
         pyautogui.keyDown(modifier)
         pyautogui.press(direction)
@@ -67,6 +69,11 @@ def multi_press(modifier1, modifier2, key):
 def press(keys):
     for key in keys:
         pyautogui.press(key)
+
+def paste_from_clipboard():
+    pyperclip.copy(clipboard.pop(0))
+    partial(move, 'v', 'command')()
+
 
 pyautogui_shortcuts = {
     "ScrollUpOneLine": partial(move, 'up', 'command'),
@@ -92,7 +99,7 @@ pyautogui_shortcuts = {
     "Shift+O": partial(move, 'o', 'shift'),
     "Delete": lambda: pyautogui.press('delete'),
     "Shift+Enter": partial(move, 'enter', 'shift'),
-    "Cmd+V": partial(move, 'v', 'command'),
+    "Cmd+V": paste_from_clipboard,
     "Ctrl+D": partial(move, 'd', 'ctrl'),
     "Command+Space": partial(move, 'space', 'command')
 }
@@ -345,10 +352,7 @@ def extract_commands_from_text(content):
 
             copy_to_clipboard = attributes.get("copyToClipboard", "false") == "true"
             if copy_to_clipboard:
-                if strip_whitespace:
-                    pyperclip.copy(token.content.rstrip())
-                else:
-                    pyperclip.copy(token.content)
+                clipboard.append(token.content)               
                 continue
 
             
