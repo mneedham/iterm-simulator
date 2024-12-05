@@ -71,8 +71,18 @@ def press(keys):
         pyautogui.press(key)
 
 def paste_from_clipboard():
-    pyperclip.copy(clipboard.pop(0))
-    partial(move, 'v', 'command')()
+    content = clipboard.pop(0)
+    # subprocess.run(f'echo "{content}" | pbcopy', shell=True)
+    
+    pyperclip.copy(content)
+    
+    apple_script = '''
+    tell application "System Events"
+        keystroke "v" using command down
+    end tell
+    '''
+
+    subprocess.run(['osascript', '-e', apple_script])
 
 
 pyautogui_shortcuts = {
@@ -352,7 +362,10 @@ def extract_commands_from_text(content):
 
             copy_to_clipboard = attributes.get("copyToClipboard", "false") == "true"
             if copy_to_clipboard:
-                clipboard.append(token.content)               
+                if strip_whitespace:
+                    clipboard.append(token.content.rstrip())
+                else: 
+                    clipboard.append(token.content)
                 continue
 
             
